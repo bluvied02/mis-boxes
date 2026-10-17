@@ -54,6 +54,16 @@ function costoBox (b) {
 function contenido (b) {
   return b.items.filter((it) => prod(it.p)).map((it) => (it.c > 1 ? it.c + ' ' : '') + prod(it.p).nombre).join(', ')
 }
+// Cuántas boxes se pueden armar con el stock que hay
+function armables (b) {
+  const its = b.items.filter((it) => prod(it.p))
+  if (!its.length) return 0
+  return Math.max(0, Math.min(...its.map((it) => Math.floor((prod(it.p).stock || 0) / it.c))))
+}
+function pastillaStock (n, texto) {
+  const cl = n <= 0 ? 'p-rojo' : n <= 2 ? 'p-naranja' : 'p-verde'
+  return '<span class="pastilla ' + cl + '">' + texto + '</span>'
+}
 function porcentaje (gan, costo) { return costo > 0 ? Math.round((gan / costo) * 100) : 0 }
 
 let tAviso
@@ -122,16 +132,24 @@ function verProductos (m) {
     return
   }
   const lista = datos.productos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))
-  let h = datos.productos.length > 8 ? '<input class="entrada buscar" id="buscar" placeholder="🔍 Buscar producto" autocomplete="off">' : ''
+  const unidades = datos.productos.reduce((s, p) => s + Math.max(0, p.stock || 0), 0)
+  const valor = datos.productos.reduce((s, p) => s + Math.max(0, p.stock || 0) * p.costo, 0)
+  let h = '<div class="tarjeta resumen"><div class="fila"><h3>Tenés ' + unidades + (unidades === 1 ? ' producto' : ' productos') + '</h3><b style="font-size:20px">' + plata(valor) + '</b></div><div class="chico" style="color:rgba(255,255,255,.85)">lo que te costó todo lo que tenés</div></div>'
+  if (datos.productos.some((p) => (p.stock || 0) < 0)) h += '<button class="btn btn-borde" id="compras-p" style="margin:0 0 12px">🛒 ¿Qué me falta comprar?</button>'
+  h += datos.productos.length > 8 ? '<input class="entrada buscar" id="buscar" placeholder="🔍 Buscar producto" autocomplete="off">' : ''
   h += '<div id="lista-prod">'
   for (const p of lista) {
     const usos = datos.boxes.filter((b) => b.items.some((it) => it.p === p.id)).length
-    h += '<button class="tarjeta" data-id="' + p.id + '" data-n="' + esc(p.nombre.toLowerCase()) + '"><div class="fila"><div><h3>' + esc(p.nombre) + '</h3>' +
-      '<div class="chico">' + (usos ? 'Está en ' + usos + (usos === 1 ? ' box' : ' boxes') : 'No está en ninguna box') + '</div></div>' +
-      '</div><div style="text-align:right"><div class="precio-grande">' + plata(p.costo) + '</div><div class="chico">' + (p.precio ? 'suelto ' + plata(p.precio) : 'costo') + '</div></div></div></button>'
+    const st = p.stock || 0
+    h += '<button class="tarjeta" data-id="' + p.id + '" data-n="' + esc(p.nombre.toLowerCase()) + '"><div class="fila"><h3>' + esc(p.nombre) + '</h3>' +
+      pastillaStock(st, st < 0 ? 'Faltan ' + (-st) : st === 0 ? 'Sin stock' : 'Stock: ' + st) + '</div>' +
+      '<div class="cifras"><div class="cifra"><small>Costo</small><b>' + plata(p.costo) + '</b></div>' +
+      '<div class="cifra"><small>Precio</small><b>' + (p.precio ? plata(p.precio) : '—') + '</b></div></div>' +
+      '<div class="chico" style="margin-top:6px">' + (usos ? 'Está en ' + usos + (usos === 1 ? ' box' : ' boxes') : 'No está en ninguna box') + '</div></button>'
   }
   m.innerHTML = h + '</div>'
   m.querySelectorAll('[data-id]').forEach((b) => { b.onclick = () => editarProducto(prod(b.dataset.id)) })
+  if ($('#compras-p')) $('#compras-p').onclick = listaCompras
   const bus = $('#buscar')
   if (bus) bus.oninput = () => {
     const q = bus.value.toLowerCase().trim()
@@ -141,8 +159,11 @@ function verProductos (m) {
 
 function formProducto (p) {
   return '<label class="campo"><span>Nombre del producto</span><input class="entrada" id="f-nombre" value="' + esc(p ? p.nombre : '') + '" placeholder="Ej: Collar de perlas" autocomplete="off"></label>' +
-    '<label class="campo"><span>¿Cuánto te costó? <small>(cada uno)</small></span><div class="con-peso"><input class="entrada plata" id="f-costo" inputmode="decimal" value="' + numTxt(p ? p.costo : 0) + '" placeholder="0"></div></label>' +
-    '<label class="campo"><span>¿A cuánto lo vendés suelto? <small>(si no lo vendés suelto, dejalo vacío)</small></span><div class="con-peso"><input class="entrada plata" id="f-precio" inputmode="decimal" value="' + numTxt(p ? p.precio : 0) + '" placeholder="0"></div></label>'
+    '<div class="dos"><label class="campo"><span>Costo <small>(c/u)</small></span><div class="con-peso"><input class="entrada plata" id="f-costo" inputmode="decimal" value="' + numTxt(p ? p.costo : 0) + '" placeholder="0"></div></label>' +
+    '<label class="campo"><span>Precio de venta</span><div class="con-peso"><input class="entrada plata" id="f-precio" inputmode="decimal" value="' + numTxt(p ? p.precio : 0) + '" placeholder="0"></div></label></div>' +
+    '<p class="chico" style="color:var(--suave);margin:-8px 0 14px">Si solo va adentro de las boxes, el precio dejalo vacío.</p>' +
+    '<div class="campo"><span>Stock <small>(¿cuántos tenés?)</small></span><div class="contador" style="gap:10px"><button type="button" id="f-st-menos" style="width:52px;height:52px">−</button>' +
+    '<input class="entrada" id="f-stock" inputmode="numeric" value="' + (p ? (p.stock || 0) : 0) + '" style="text-align:center;flex:1;font-weight:700"><button type="button" id="f-st-mas" style="width:52px;height:52px">+</button></div></div>'
 }
 
 function editarProducto (p, alGuardar) {
@@ -153,12 +174,17 @@ function editarProducto (p, alGuardar) {
     (nuevo ? '' : '<button class="btn btn-quitar" id="f-borrar">Borrar producto</button>'),
     (c) => {
       if (nuevo) setTimeout(() => $('#f-nombre', c).focus(), 250)
+      const stock = $('#f-stock', c)
+      const leerStock = () => { const n = parseInt(String(stock.value).replace(/[^\d-]/g, ''), 10); return isFinite(n) ? n : 0 }
+      $('#f-st-mas', c).onclick = () => { stock.value = leerStock() + 1 }
+      $('#f-st-menos', c).onclick = () => { stock.value = leerStock() - 1 }
+      stock.addEventListener('focus', () => stock.select())
       $('#f-guardar', c).onclick = () => {
         const nombre = $('#f-nombre', c).value.trim()
         if (!nombre) { avisar('Poné el nombre'); return }
         const costo = leerNum($('#f-costo', c).value)
         const precio = leerNum($('#f-precio', c).value)
-        if (nuevo) { p = { id: nuevoId(), nombre, costo, precio }; datos.productos.push(p) } else { p.nombre = nombre; p.costo = costo; p.precio = precio }
+        if (nuevo) { p = { id: nuevoId(), nombre, costo, precio, stock: leerStock() }; datos.productos.push(p) } else { p.nombre = nombre; p.costo = costo; p.precio = precio; p.stock = leerStock() }
         guardar(); cerrarHoja(); dibujar()
         avisar(nuevo ? 'Producto agregado ✓' : 'Guardado ✓')
         if (alGuardar) alGuardar(p)
@@ -179,7 +205,7 @@ function editarProducto (p, alGuardar) {
 function verBoxes (m) {
   if (!datos.boxes.length) {
     m.innerHTML = '<div class="vacio"><div class="grande">🎁</div><p><b>¡Hola! Armemos tus boxes</b></p>' +
-      '<ol class="pasos"><li>En <b>🧺 Productos</b> cargá cada cosa con lo que te costó.</li>' +
+      '<ol class="pasos"><li>En <b>🧺 Productos</b> cargá cada cosa con lo que te costó, el precio y cuántos tenés.</li>' +
       '<li>Acá en <b>🎁 Boxes</b> tocá <b>＋ Nueva box</b>, elegí qué lleva y cuánto sale la caja.</li>' +
       '<li>La app te dice cuánto te cuesta y cuánto ganás.</li>' +
       '<li>En <b>💰 Ventas</b> anotás lo que vendés y ves cuánto llevás.</li></ol></div>'
@@ -192,6 +218,7 @@ function verBoxes (m) {
     h += '<button class="tarjeta" data-id="' + b.id + '"><div class="fila"><h3>' + esc(b.nombre) + '</h3>' +
       '<div class="precio-grande">' + (b.precio ? plata(b.precio) : '<span class="chico">sin precio</span>') + '</div></div>' +
       '<div class="chico">' + (esc(contenido(b)) || 'Sin productos todavía') + '</div>' +
+      (b.items.length ? pastillaStock(armables(b), armables(b) ? 'Podés armar ' + armables(b) : 'No alcanza el stock') : '') +
       '<div class="cifras"><div class="cifra"><small>Te cuesta</small><b>' + plata(costo) + '</b></div>' +
       (b.precio ? '<div class="cifra ' + (gan >= 0 ? 'gana' : 'pierde') + '"><small>' + (gan >= 0 ? 'Ganás' : 'Perdés') + '</small><b>' + plata(Math.abs(gan)) + ' <span style="font-size:13px">(' + porcentaje(gan, costo) + '%)</span></b></div>' : '') +
       '</div></button>'
@@ -340,6 +367,11 @@ function elegirProducto (b, alElegir) {
 const totalVenta = (v) => v.items.reduce((s, it) => s + it.precio * it.c, 0)
 const costoVenta = (v) => v.items.reduce((s, it) => s + it.costo * it.c, 0)
 const faltaCobrar = (v) => Math.max(0, totalVenta(v) - (v.pagado || 0))
+// Stock: cada renglón vendido guarda qué productos se llevó (st), así al borrar o cambiar la venta se devuelven
+// exactamente esos aunque la box haya cambiado. Las ventas de antes del stock no tienen "st" y no lo tocan.
+function moverStock (items, signo) {
+  for (const it of items) for (const x of it.st || []) { const p = prod(x.p); if (p) p.stock = (p.stock || 0) + signo * x.c * it.c }
+}
 const resumenItems = (v) => v.items.map((it) => (it.c > 1 ? it.c + ' × ' : '') + it.nombre).join(', ')
 
 function diaDe (f) {
@@ -370,7 +402,7 @@ function verVentas (m) {
     '<div class="cifra"><small>Hoy</small><b>' + plata(hoy) + '</b></div>' +
     (falta > 0 ? '<div class="cifra"><small>Te deben</small><b>' + plata(falta) + '</b></div>' : '') + '</div></div>'
   h += '<div class="botonera" style="margin-bottom:4px"><button class="btn btn-borde" id="que-vendi" style="margin-top:0">📊 ¿Qué vendí?</button>' +
-    (datos.ventas.some((v) => !v.entregado) ? '<button class="btn btn-borde" id="compras" style="margin-top:0">🛒 Comprar</button>' : '') + '</div>'
+    (datos.productos.some((p) => (p.stock || 0) < 0) ? '<button class="btn btn-borde" id="compras" style="margin-top:0">🛒 Comprar</button>' : '') + '</div>'
   // Agrupadas por día, con el total de cada día
   let dia = null
   for (const v of datos.ventas) {
@@ -398,7 +430,10 @@ function editarVenta (orig) {
   const nuevo = !orig
   const v = orig ? JSON.parse(JSON.stringify(orig)) : { id: nuevoId(), fecha: Date.now(), cliente: '', tel: '', nota: '', items: [], pagado: 0, entregado: true }
   const pagoTodo = nuevo || faltaCobrar(v) === 0
-  const boton = (t, x, precio) => '<button type="button" class="opcion" data-t="' + t + '" data-x="' + x.id + '"><span>' + esc(x.nombre) + '</span><b>' + plata(precio) + '</b></button>'
+  const boton = (t, x, precio) => {
+    const quedan = t === 'b' ? armables(x) : (x.stock || 0)
+    return '<button type="button" class="opcion" data-t="' + t + '" data-x="' + x.id + '"><span>' + esc(x.nombre) + '<small style="display:block;font-size:13px;color:' + (quedan > 0 ? 'var(--suave)' : 'var(--rojo)') + '">' + (quedan > 0 ? 'quedan ' + quedan : 'sin stock') + '</small></span><b>' + plata(precio) + '</b></button>'
+  }
   abrirHoja(nuevo ? 'Nueva venta' : 'Venta del ' + diaDe(v.fecha).toLowerCase(),
     '<div class="titulo-seccion" style="margin-top:0">¿Qué vendiste? <small style="text-transform:none;font-weight:normal">(tocá para sumar)</small></div>' +
     (datos.boxes.length ? '<div class="elegir">' + datos.boxes.map((b) => boton('b', b, b.precio || 0)).join('') + '</div>' : '') +
@@ -452,10 +487,10 @@ function editarVenta (orig) {
         x.onclick = () => {
           const ya = v.items.find((it) => it.t === x.dataset.t && it.id === x.dataset.x)
           if (ya) ya.c++
-          else if (x.dataset.t === 'b') { const b = box(x.dataset.x); v.items.push({ t: 'b', id: b.id, nombre: b.nombre, c: 1, precio: b.precio || 0, costo: costoBox(b) }) }
-          else { const p = prod(x.dataset.x); v.items.push({ t: 'p', id: p.id, nombre: p.nombre, c: 1, precio: p.precio, costo: p.costo }) }
+          else if (x.dataset.t === 'b') { const b = box(x.dataset.x); v.items.push({ t: 'b', id: b.id, nombre: b.nombre, c: 1, precio: b.precio || 0, costo: costoBox(b), st: b.items.filter((bi) => prod(bi.p)).map((bi) => ({ p: bi.p, c: bi.c })) }) }
+          else { const p = prod(x.dataset.x); v.items.push({ t: 'p', id: p.id, nombre: p.nombre, c: 1, precio: p.precio, costo: p.costo, st: [{ p: p.id, c: 1 }] }) }
           pintar()
-          avisar('＋1 ' + x.querySelector('span').textContent)
+          avisar('＋1 ' + (x.dataset.t === 'b' ? box(x.dataset.x) : prod(x.dataset.x)).nombre)
         }
       })
       $('#f-pago', c).onchange = () => { $('#f-pago-campo', c).style.display = $('#f-pago', c).checked ? 'none' : ''; pintar() }
@@ -471,14 +506,20 @@ function editarVenta (orig) {
       $('#f-guardar', c).onclick = () => {
         leer()
         if (!v.items.length) { avisar('Tocá arriba lo que vendiste'); return }
+        if (!nuevo) moverStock(orig.items, +1)
+        moverStock(v.items, -1)
         if (nuevo) datos.ventas.unshift(v); else Object.assign(orig, v)
-        guardar(); cerrarHoja(); pestana = 'ventas'; dibujar(); avisar(nuevo ? 'Venta guardada 💰 ' + plata(totalVenta(v)) : 'Guardado ✓')
+        const faltan = datos.productos.filter((p) => (p.stock || 0) < 0 && v.items.some((it) => (it.st || []).some((x) => x.p === p.id)))
+        guardar(); cerrarHoja(); pestana = 'ventas'; dibujar()
+        if (faltan.length) { setTimeout(() => avisar('⚠️ Te falta stock de: ' + faltan.map((p) => p.nombre).join(', ')), 2300) }
+        avisar(nuevo ? 'Venta guardada 💰 ' + plata(totalVenta(v)) : 'Guardado ✓')
       }
       const borrar = $('#f-borrar', c)
       if (borrar) borrar.onclick = () => {
-        if (!confirm('¿Borrar esta venta de ' + plata(totalVenta(orig)) + '?')) return
+        if (!confirm('¿Borrar esta venta de ' + plata(totalVenta(orig)) + '? Lo vendido vuelve al stock.')) return
+        moverStock(orig.items, +1)
         datos.ventas = datos.ventas.filter((x) => x.id !== orig.id)
-        guardar(); cerrarHoja(); dibujar(); avisar('Venta borrada')
+        guardar(); cerrarHoja(); dibujar(); avisar('Venta borrada (el stock volvió)')
       }
     })
 }
@@ -509,27 +550,20 @@ function queVendi () {
 }
 
 function listaCompras () {
-  // Suma lo que hace falta para armar todo lo que falta entregar
-  const cuenta = {}
-  let cajas = 0
-  for (const v of datos.ventas.filter((x) => !x.entregado)) {
-    for (const it of v.items) {
-      if (it.t === 'p') { cuenta[it.id] = (cuenta[it.id] || 0) + it.c; continue }
-      const b = box(it.id)
-      if (!b) continue
-      cajas += it.c
-      for (const bi of b.items) cuenta[bi.p] = (cuenta[bi.p] || 0) + bi.c * it.c
-    }
-  }
-  const filas = Object.keys(cuenta).filter(prod).map((id) => ({ p: prod(id), n: cuenta[id] })).sort((a, b) => a.p.nombre.localeCompare(b.p.nombre))
+  // Lo que vendiste sin tenerlo (stock en negativo) y lo que te queda poco
+  const faltan = datos.productos.filter((p) => (p.stock || 0) < 0).sort((a, b) => a.nombre.localeCompare(b.nombre))
+  const pocos = datos.productos.filter((p) => (p.stock || 0) >= 0 && (p.stock || 0) <= 2 && (p.precio || datos.boxes.some((b) => b.items.some((it) => it.p === p.id))))
   let gasto = 0
-  let h = '<p class="chico" style="color:var(--suave);margin-top:0">Todo lo que necesitás para armar lo que falta entregar.</p><div class="cuenta">'
-  if (cajas) h += '<div class="fila"><span><b>' + cajas + '</b> cajas (con moño, papel…)</span><span></span></div>'
-  for (const f of filas) { gasto += f.p.costo * f.n; h += '<div class="fila"><span><b>' + f.n + '</b> ' + esc(f.p.nombre) + '</span><span class="chico">' + plata(f.p.costo * f.n) + '</span></div>' }
-  h += '<div class="fila total"><span>Productos</span><span>' + plata(gasto) + '</span></div></div>'
+  let h = '<p class="chico" style="color:var(--suave);margin-top:0">Lo que ya vendiste y no tenés.</p><div class="cuenta">'
+  for (const p of faltan) { gasto += p.costo * -p.stock; h += '<div class="fila"><span><b>' + (-p.stock) + '</b> ' + esc(p.nombre) + '</span><span class="chico">' + plata(p.costo * -p.stock) + '</span></div>' }
+  if (!faltan.length) h += '<div class="fila chico">No te falta nada 🎉</div>'
+  h += '<div class="fila total"><span>Gastarías</span><span>' + plata(gasto) + '</span></div></div>'
+  if (pocos.length) h += '<div class="titulo-seccion">Te quedan pocos</div><div class="cuenta">' + pocos.map((p) => '<div class="fila"><span>' + esc(p.nombre) + '</span><span>' + (p.stock || 0) + '</span></div>').join('') + '</div>'
+  h += '<p class="chico" style="color:var(--suave)">Cuando compres, sumalo al stock en 🧺 Productos.</p>'
   h += '<button class="btn btn-verde" id="c-wsp">📲 Mandarme la lista por WhatsApp</button>'
-  abrirHoja('🛒 Qué tengo que comprar', h, (c) => {
-    $('#c-wsp', c).onclick = () => whatsapp('🛒 *Para comprar*\n' + (cajas ? cajas + ' cajas\n' : '') + filas.map((f) => f.n + ' ' + f.p.nombre).join('\n'))
+  abrirHoja('🛒 Qué me falta comprar', h, (c) => {
+    $('#c-wsp', c).onclick = () => whatsapp('🛒 *Para comprar*\n' + faltan.map((p) => (-p.stock) + ' ' + p.nombre).join('\n') +
+      (pocos.length ? '\n\n*Quedan pocos:*\n' + pocos.map((p) => p.nombre + ' (' + (p.stock || 0) + ')').join('\n') : ''))
   })
 }
 
