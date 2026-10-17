@@ -106,7 +106,7 @@ function dibujar () {
 function verProductos (m) {
   if (!datos.productos.length) {
     m.innerHTML = '<div class="vacio"><div class="grande">🧺</div><p><b>Todavía no cargaste productos</b></p>' +
-      '<p>Cargá cada cosa que va adentro de las boxes (taza, chocolates, vela, flores…) con lo que te costó.</p></div>'
+      '<p>Cargá cada cosa que va adentro de las boxes (collar, aros, crema, labial, perfume…) con lo que te costó.</p></div>'
     return
   }
   const lista = datos.productos.slice().sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -128,7 +128,7 @@ function verProductos (m) {
 }
 
 function formProducto (p) {
-  return '<label class="campo"><span>Nombre del producto</span><input class="entrada" id="f-nombre" value="' + esc(p ? p.nombre : '') + '" placeholder="Ej: Taza con frase" autocomplete="off"></label>' +
+  return '<label class="campo"><span>Nombre del producto</span><input class="entrada" id="f-nombre" value="' + esc(p ? p.nombre : '') + '" placeholder="Ej: Collar de perlas" autocomplete="off"></label>' +
     '<label class="campo"><span>¿Cuánto te costó? <small>(cada uno)</small></span><div class="con-peso"><input class="entrada plata" id="f-costo" inputmode="decimal" value="' + numTxt(p ? p.costo : 0) + '" placeholder="0"></div></label>'
 }
 
@@ -199,7 +199,7 @@ function editarBox (orig) {
   // Trabajo sobre una copia; se guarda recién al tocar "Guardar"
   const b = orig ? JSON.parse(JSON.stringify(orig)) : { id: nuevoId(), nombre: '', items: [], caja: 0, otros: 0, precio: 0 }
   abrirHoja(nuevo ? 'Nueva box' : 'Editar box',
-    '<label class="campo"><span>Nombre de la box</span><input class="entrada" id="f-nombre" value="' + esc(b.nombre) + '" placeholder="Ej: Box Desayuno" autocomplete="off"></label>' +
+    '<label class="campo"><span>Nombre de la box</span><input class="entrada" id="f-nombre" value="' + esc(b.nombre) + '" placeholder="Ej: Box Belleza" autocomplete="off"></label>' +
     '<div class="titulo-seccion" style="margin-top:0">¿Qué lleva adentro?</div>' +
     '<div class="caja-blanca"><div id="f-items"></div><button class="btn btn-borde" id="f-agregar" style="margin:8px 0 2px">＋ Agregar producto</button></div>' +
     '<div class="dos"><label class="campo"><span>Caja</span><div class="con-peso"><input class="entrada plata" id="f-caja" inputmode="decimal" value="' + numTxt(b.caja) + '" placeholder="0"></div></label>' +
