@@ -109,15 +109,15 @@ document.querySelectorAll('.pestanas button').forEach((b) => {
   b.onclick = () => { pestana = b.dataset.p; dibujar(); window.scrollTo(0, 0) }
 })
 $('#btn-nuevo').onclick = () => {
-  if (pestana === 'boxes') editarBox()
-  else if (pestana === 'productos') editarProducto()
+  // En Boxes el botón grande es para vender (lo que más se usa); las boxes se arman con el botón de la lista
+  if (pestana === 'productos') editarProducto()
   else editarVenta()
 }
 $('#btn-ajustes').onclick = ajustes
 
 function dibujar () {
   document.querySelectorAll('.pestanas button').forEach((b) => b.classList.toggle('activa', b.dataset.p === pestana))
-  $('#btn-nuevo-txt').textContent = { boxes: 'Nueva box', productos: 'Nuevo producto', ventas: 'Nueva venta' }[pestana]
+  $('#btn-nuevo-txt').textContent = { boxes: 'Nueva venta', productos: 'Nuevo producto', ventas: 'Nueva venta' }[pestana]
   const m = $('#pantalla')
   if (pestana === 'boxes') verBoxes(m)
   else if (pestana === 'productos') verProductos(m)
@@ -206,9 +206,11 @@ function verBoxes (m) {
   if (!datos.boxes.length) {
     m.innerHTML = '<div class="vacio"><div class="grande">🎁</div><p><b>¡Hola! Armemos tus boxes</b></p>' +
       '<ol class="pasos"><li>En <b>🧺 Productos</b> cargá cada cosa con lo que te costó, el precio y cuántos tenés.</li>' +
-      '<li>Acá en <b>🎁 Boxes</b> tocá <b>＋ Nueva box</b>, elegí qué lleva y cuánto sale la caja.</li>' +
+      '<li>Acá en <b>🎁 Boxes</b> tocá <b>Armar una box</b>, elegí qué lleva y cuánto sale la caja.</li>' +
       '<li>La app te dice cuánto te cuesta y cuánto ganás.</li>' +
-      '<li>En <b>💰 Ventas</b> anotás lo que vendés y ves cuánto llevás.</li></ol></div>'
+      '<li>Cuando vendas, tocá <b>＋ Nueva venta</b> y en <b>💰 Ventas</b> ves cuánto llevás.</li></ol>' +
+      '<button class="btn btn-rosa" id="armar-box" style="margin-top:16px">🎁 Armar una box</button></div>'
+    $('#armar-box').onclick = () => editarBox()
     return
   }
   let h = '<button class="btn btn-verde" id="compartir-todo" style="margin:0 0 14px">📲 Mandar lista de precios por WhatsApp</button>'
@@ -223,8 +225,10 @@ function verBoxes (m) {
       (b.precio ? '<div class="cifra ' + (gan >= 0 ? 'gana' : 'pierde') + '"><small>' + (gan >= 0 ? 'Ganás' : 'Perdés') + '</small><b>' + plata(Math.abs(gan)) + ' <span style="font-size:13px">(' + porcentaje(gan, costo) + '%)</span></b></div>' : '') +
       '</div></button>'
   }
+  h += '<button class="btn btn-borde" id="armar-box" style="margin-top:0">🎁 Armar otra box</button>'
   m.innerHTML = h
   m.querySelectorAll('[data-id]').forEach((t) => { t.onclick = () => editarBox(box(t.dataset.id)) })
+  $('#armar-box').onclick = () => editarBox()
   $('#compartir-todo').onclick = () => {
     const conPrecio = datos.boxes.filter((b) => b.precio)
     if (!conPrecio.length) { avisar('Primero ponele precio a las boxes'); return }
