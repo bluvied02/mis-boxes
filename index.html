@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#d94f7a">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mis Boxes">
+<title>Mis Boxes</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header class="arriba">
+  <h1>Mis Boxes <span>💐</span></h1>
+  <button class="btn-icono" id="btn-ajustes" aria-label="Copia de seguridad">⚙️</button>
+</header>
+
+<main id="pantalla"></main>
+
+<button class="btn-nuevo" id="btn-nuevo">＋ <span id="btn-nuevo-txt">Nuevo</span></button>
+
+<nav class="pestanas">
+  <button data-p="boxes" class="activa"><b>🎁</b>Boxes</button>
+  <button data-p="productos"><b>🧺</b>Productos</button>
+  <button data-p="pedidos"><b>📝</b>Pedidos</button>
+</nav>
+
+<div id="hojas"></div>
+<div id="aviso" class="aviso"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
