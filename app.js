@@ -187,7 +187,7 @@ function verBoxes (m) {
   $('#compartir-todo').onclick = () => {
     const conPrecio = datos.boxes.filter((b) => b.precio)
     if (!conPrecio.length) { avisar('Primero ponele precio a las boxes'); return }
-    let t = '💐 *Boxes Día de la Madre* 💐\n'
+    let t = '💐 *OLI & CE* · Boxes Día de la Madre 💐\n'
     for (const b of conPrecio) t += '\n🎁 *' + b.nombre + '* — ' + plata(b.precio) + (contenido(b) ? '\n   ' + contenido(b) : '') + '\n'
     t += '\n¡Hacé tu pedido! 💕'
     whatsapp(t)
@@ -473,10 +473,10 @@ function ajustes () {
     (c) => {
       $('#a-copia', c).onclick = async () => {
         const hoy = new Date().toISOString().slice(0, 10)
-        const nombre = 'mis-boxes-' + hoy + '.json'
+        const nombre = 'oli-y-ce-copia-' + hoy + '.json'
         const archivo = new File([JSON.stringify(datos)], nombre, { type: 'application/json' })
         try {
-          if (navigator.canShare && navigator.canShare({ files: [archivo] })) { await navigator.share({ files: [archivo], title: 'Copia Mis Boxes' }); return }
+          if (navigator.canShare && navigator.canShare({ files: [archivo] })) { await navigator.share({ files: [archivo], title: 'Copia OLI & CE' }); return }
         } catch (e) { if (e && e.name === 'AbortError') return }
         const a = document.createElement('a')
         a.href = URL.createObjectURL(archivo); a.download = nombre; a.click()
@@ -495,7 +495,7 @@ function ajustes () {
             if (!confirm('Esto reemplaza lo que hay ahora por la copia (' + d.productos.length + ' productos, ' + d.boxes.length + ' boxes, ' + (d.pedidos || []).length + ' pedidos). ¿Seguir?')) return
             datos = { productos: d.productos, boxes: d.boxes, pedidos: d.pedidos || [] }
             guardar(); cerrarHoja(); dibujar(); avisar('Copia recuperada ✓')
-          } catch (err) { avisar('Ese archivo no es una copia de Mis Boxes') }
+          } catch (err) { avisar('Ese archivo no es una copia de OLI & CE') }
         }
         r.readAsText(f)
       }
